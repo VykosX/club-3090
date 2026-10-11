@@ -2,6 +2,14 @@
 
 Dated history for Qwen3.8-27B configs in this repo. Append-only — add a new entry, don't rewrite past ones.
 
+## 2026-10-11 — HyperQwen single-3090 engine: BF16, KVarN K8/V4 and K4/V2
+
+Add a dedicated `hyperqwen-vllm` engine and three experimental Qwen3.8-27B W4A16 single-card profiles for 24 GB RTX 3090 / sm_86: `hyperqwen-vllm/qwen38-27b-single-w4a16-bf16` (65,536 context), `hyperqwen-vllm/qwen38-27b-single-w4a16-k8v4` (163,840), and `hyperqwen-vllm/qwen38-27b-single-w4a16-k4v2` (245,760). All three use the prepared public target `VykosX/Qwen3.8-27B-HyperQwen-W4A16-Fast-Prepared` plus `syvai/Qwen3.8-27B-DFlash2-W4A16`; `setup.sh <slug>` derives and downloads both automatically, and the serving composes set `PREPARE=0` so first boot does not re-quantize or mutate the model.
+
+The runtime is based on immutable syv-ai/HyperQwen commit `3acb93f7acdcdbc3cfe67e2849e27537c0524b0a`. Club-3090 carries a tiny source-auditable image layer that registers HyperQwen's already-parameterized KVarN K8/V4 g128 geometry and exposes `KVARN_DTYPE`, with build-time/runtime self-tests and no model weights baked into the image. K4/V2 uses upstream HyperQwen KVarN unchanged; BF16 uses the same image but no KVarN path. Only sm_86 is claimed because that is the architecture actually validated.
+
+Measured on one RTX 3090 / sm_86 with the canonical 3-warm + 5-measured bench protocol: BF16 **131.60 / 228.53 wall TPS** (**133.83 / 239.53 decode**) at 65,536 context; K8/V4 **121.53 / 208.07 wall** (**124.05 / 219.08 decode**) at 163,840; K4/V2 **120.80 / 203.31 wall** (**123.26 / 213.46 decode**) at 245,760. All three pass `verify-full`, `verify-stress`, and continuous soak; 8-pack thinking/instruct results are **131/150 / 109/150** (BF16), **133/150 / 108/150** (K8/V4), and **126/150 / 87/150** (K4/V2). See BENCHMARKS.md and the PR's raw evidence bundles for the full bench, stress, soak, concurrency and power-cap measurements.
+
 ## 2026-10-09 — reasoning budget chosen by effort (vLLM + SGLang)
 
 Every vLLM and SGLang Qwen3.8 compose now caps reasoning with a budget picked from the

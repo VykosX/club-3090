@@ -1,0 +1,31 @@
+schema_version: 1
+id: hyperqwen-vllm
+display_name: HyperQwen vLLM 0.30.0 (3acb93f + Club-3090 K8/V4)
+type: vllm
+image_env: HYPERQWEN_IMAGE
+
+stability: experimental
+install:
+  method: docker_image
+  # Public Docker Hub image, pinned by immutable manifest digest. The human
+  # release tag is vykosx/hyperqwen-vllm:3acb93f-r1.
+  spec: vykosx/hyperqwen-vllm@sha256:11be34eaeac386b418beb98afe78221551f181c6a5726f9cf2dc02fdf92b438c
+min_sm: 8.6
+supported_model_families:
+  - qwen35-dense
+features:
+  dflash2: true
+  kvarn: true
+  kvarn_k8v4: true
+supported_kv_formats:
+  - bf16
+  - kvarn_k4v2_g128
+  - kvarn_k8v4_g128
+supported_drafters:
+  - dflash
+supported_weight_formats:
+  - autoround
+required_overlays: []
+vendored_overlays: []
+required_genesis: false
+notes: "Dedicated single-card Qwen3.8 runtime based on syv-ai/HyperQwen commit 3acb93f7acdcdbc3cfe67e2849e27537c0524b0a. The image carries HyperQwen's patched vLLM 0.30.0 stack, DFlash2 path and KVarN K4/V2 support; Club-3090 adds only the audited KVarN K8/V4 registration/launcher selector under models/qwen3.8-27b/hyperqwen-vllm/docker/hyperqwen-k8v4. All three shipped slugs were validated on one RTX 3090 sm_86 with the prepared VykosX W4A16 target and syvai DFlash2 drafter. This is intentionally a separate engine rather than pretending the custom stack is stock vllm-stable."

@@ -146,7 +146,7 @@ def _load_model_specs_from_yaml(profiles):
     # tp_size % num_kv_heads == 0 and replicates), and the FIRST priced model to
     # exceed num_kv_heads, which is what makes _kv_tp_divisor load-bearing.
     q38 = profiles.models["qwen3.8-27b"]
-    q38spec = {"model_id": q38.id, "model_family": qwen.family, **{k: getattr(q38, k) for k in q_fields}, "valid_tp": list(q38.valid_tp), "weights_total_gb": _weight_size(q38, "autoround-int4"), "weights_int4_gb": _weight_size(q38, "autoround-int4"), "weights_nvfp4_gb": _weight_size(q38, "nvfp4"), "weights_int8_gb": _weight_size(q38, "fp8"), "mamba_state_bytes": 4, "chunk_size": 256, "mtp_n_default": profiles.drafters["qwen-mtp-builtin"].n_default}
+    q38spec = {"model_id": q38.id, "model_family": qwen.family, **{k: getattr(q38, k) for k in q_fields}, "valid_tp": list(q38.valid_tp), "weights_total_gb": _weight_size(q38, "autoround-int4"), "weights_int4_gb": _weight_size(q38, "autoround-int4"), "weights_hyperqwen_gb": _weight_size(q38, "hyperqwen-w4a16-fast"), "weights_nvfp4_gb": _weight_size(q38, "nvfp4"), "weights_int8_gb": _weight_size(q38, "fp8"), "mamba_state_bytes": 4, "chunk_size": 256, "mtp_n_default": profiles.drafters["qwen-mtp-builtin"].n_default}
     a1spec = {"model_id": a1.id, "model_family": a1.family, **{k: getattr(a1, k) for k in qm_fields}, "valid_tp": list(a1.valid_tp), "weights_total_gb": _weight_size(a1, a1.default_weight_variant), "mamba_state_bytes": 4, "chunk_size": 256, "mtp_n_default": profiles.drafters["qwen-mtp-builtin"].n_default}
     # Qwen-AgentWorld-35B-A3B: same Qwen3-Next MoE geometry and KV math,
     # with its own AWQ INT4 footprint. The config's inherited MTP declaration
@@ -408,6 +408,8 @@ KV_FORMAT_BYTES = {
     "int8_per_token_head":   1.01,        # 1.0 int8 + per-token-head fp16 scale (~1% amortized)
     "q4_0":                  0.5 + 0.0625, # 4-bit + per-group scale
     "k8v4":                  0.75,         # avg of K=int8 V=int4
+    "kvarn_k4v2_g128":       0.375,        # KVarN g128: K=int4, V=int2
+    "kvarn_k8v4_g128":       0.75,         # KVarN g128: K=int8, V=int4
     "turboquant_3bit_nc":    0.375 + 0.05, # 3 bits + small QJL overhead
     "nvfp4":                 0.5 + 0.0625, # 4-bit elements + fp8 block scale per 16
                                            # (PROJECTED — Blackwell-only, no measured
@@ -441,6 +443,8 @@ QWEN_GDN_ACTIVATION_COEF = {
     "int8_per_token_head": 130,
     "q4_0":               155,
     "k8v4":               155,
+    "kvarn_k4v2_g128":    155,  # projected from the same quantized-KV class; validated profile has measured headroom
+    "kvarn_k8v4_g128":    155,  # projected from the same quantized-KV class; validated profile has measured headroom
     "turboquant_3bit_nc": 165,
     "nvfp4":              130,  # PROJECTED — mirror fp8 until a Blackwell boot calibrates it (#246)
 }
@@ -462,6 +466,8 @@ QWEN_MOE_ACTIVATION_COEF = {
     "int8_per_token_head": 105,
     "q4_0":               130,
     "k8v4":               130,
+    "kvarn_k4v2_g128":    130,
+    "kvarn_k8v4_g128":    130,
     "turboquant_3bit_nc": 140,
     "nvfp4":              105,  # PROJECTED — mirror fp8 until a Blackwell boot calibrates it (#246)
 }
@@ -684,6 +690,8 @@ def _weights_per_card_gb(spec, tp, weights_variant="default"):
         # presence so qwen3.6-27b, which ships no int8/fp8 spec key, is unaffected.
         if weights_variant == "int8" and "weights_int8_gb" in spec:
             return spec["weights_int8_gb"] / tp
+        if weights_variant == "hyperqwen" and "weights_hyperqwen_gb" in spec:
+            return spec["weights_hyperqwen_gb"] / tp
         return spec["weights_total_gb"] / tp
     elif spec["model_family"] == "qwen3-next-moe":
         # vLLM shards attention + MoE expert weights across TP ranks, so
@@ -2044,7 +2052,7 @@ def main():
                          f"(h + v_new + o) is linear in THIS, not in max_ctx. Omit to assume the "
                          f"{GDN_SCRATCH_CALIBRATION_BATCHED_TOKENS} the calibration anchors were "
                          "booted at (prediction then matches the calibrated model exactly)."))
-    p.add_argument("--weights-variant", choices=["default", "int4", "awq", "bf16", "int8", "nvfp4"], default=None,
+    p.add_argument("--weights-variant", choices=["default", "int4", "awq", "bf16", "int8", "nvfp4", "hyperqwen"], default=None,
                    help="Gemma 4 only: which weight quant variant. Default: from --compose, or int4.")
     p.add_argument("--calibration", action="store_true", help="Print predicted vs measured for all calibrated models.")
     p.add_argument("--fit", metavar="SLUG|MODEL",

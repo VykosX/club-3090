@@ -55,6 +55,7 @@ _LOCAL_SLUG_PREFIX = "local/"
 # (docs/ADDING_MODELS.md Step 3: llamacpp, NOT llama-cpp).
 _ENGINE_SLUG_PREFIX = {
     "vllm": "vllm",
+    "hyperqwen-vllm": "hyperqwen-vllm",
     "llama-cpp": "llamacpp",
     "ik-llama": "ik-llama",
     "beellama": "beellama",

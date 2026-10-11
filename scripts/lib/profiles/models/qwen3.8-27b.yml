@@ -131,6 +131,17 @@ weights:
     kind: main
     verify_glob: "*.safetensors"
     manual_note: "Community AutoRound INT4, Frozenlock export (quant_method auto-round, 4-bit, group_size 128, sym=true, auto-round-packed [k/8,n]). ~19.0 GB decimal. Drives the FAST tier (vllm/qwen38-27b-{dual,multi4,multi8}-fast) opposite the official-FP8 MAX tier. ⭐ REPLACED the prior Avuja/Qwen3.8-27B-int4-AutoRound export 2026-08-20 (club-3090#1052): Avuja’s checkpoint permanently collapsed the built-in MTP drafter to 0% acceptance at ~14.5k cumulative gen tokens; Frozenlock (SAME core recipe, different export) runs the drafter clean past 22-24k in BOTH W4A8 and W4A16 (verify-full 8/9, bench narr ~74.9 / code ~103.5 TPS, MTP accept-len 3.48-5.0, coherent). Distinct from the SEPARATE vllm#50021 GDN spec-decode wild-write crash (still live). ⚠ Unlike Avuja this export QUANTIZES the MTP head (not bf16). ⚠⚠ INHERITED-FROM-AVUJA, NOT re-measured on Frozenlock (re-run before quoting as Frozenlock numbers): the n=4 depth knee (+22.1% narr / +83.8% code; n=1 worse than no drafter), the W4A8 +41.8%-prefill/-8%-decode A/B, verify-full 9/9 both arms. W4A8 (int8 activations) works because it is auto-round-packed [k/8,n], what the vendored negscale fold assumes. VISION tower present (bf16), never served. Full detail: learnings/qwen3.8-27b.md."
+  hyperqwen-w4a16-fast:
+    path: hyperqwen/Qwen3.8-27B-W4A16-AutoRound-fast
+    local_subdir: hyperqwen/Qwen3.8-27B-W4A16-AutoRound-fast
+    size_gb: 15.82
+    format: autoround
+    status: experimental
+    hf_repo: VykosX/Qwen3.8-27B-HyperQwen-W4A16-Fast-Prepared
+    engine: vllm
+    kind: main
+    verify_glob: "*.safetensors"
+    manual_note: "Prepared HyperQwen W4A16 fast target for a single RTX 3090. Public reproducible artifact derived from the HyperQwen/Qwen3.8 AutoRound target preparation flow and uploaded as 19 files (~15.81 GB). This is already prepared for the runtime: the HyperQwen compose deliberately sets PREPARE=0, so setup.sh only downloads this target plus the registered DFlash2 companion instead of re-quantizing on first boot. Apache-2.0 source lineage is recorded in the submission evidence."
   nvfp4:
     path: qwen3.8-27b-nvfp4
     local_subdir: qwen3.8-27b-nvfp4

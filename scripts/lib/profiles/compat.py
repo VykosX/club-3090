@@ -1032,6 +1032,8 @@ def _kv_calc_weights_variant(model: ModelProfile, variant: str) -> str:
     # kv-calc's int8 weight size instead of the bf16 fallback (was a false FAIL).
     if variant == "autoround-int8":
         return "int8"
+    if model.id == "qwen3.8-27b" and variant == "hyperqwen-w4a16-fast":
+        return "hyperqwen"
     if model.family == "gemma4-swa-dense":
         if variant == "awq":
             return "awq"

@@ -17,6 +17,8 @@ supported_kv_formats:
   - q8_0
   - k8v4
   - kvarn4   # KVarN KV-compression (beellama v0.3.2 preview) — software KV, runs wherever beellama does
+  - kvarn_k4v2_g128   # HyperQwen/vLLM KVarN: 4-bit keys, 2-bit values, group 128
+  - kvarn_k8v4_g128   # HyperQwen/vLLM KVarN: 8-bit keys, 4-bit values, group 128
 kv_format_default:
   long_context: turboquant_3bit_nc
   multi_stream: int8_per_token_head
@@ -29,4 +31,3 @@ nvlink_capable: true
 power_cap_w_optimal: 290
 power_cap_w_prefill: 250
 power_cap_w_max: 350
-

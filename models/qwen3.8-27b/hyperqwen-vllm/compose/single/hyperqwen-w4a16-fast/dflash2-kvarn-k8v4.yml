@@ -1,0 +1,68 @@
+# ===========================================================================
+# Profile (at-a-glance):
+#   Model:     Qwen3.8-27B, prepared HyperQwen W4A16 fast target
+#   Topology:  Single card (TP=1), validated on RTX 3090 sm_86
+#   Runtime:   HyperQwen 3acb93f patched vLLM 0.30.0 + Club-3090 K8/V4 image
+#   Drafter:   syvai Qwen3.8 DFlash2 W4A16, n=7
+#   KV:        KVarN K8/V4 g128 + fp16 dequant, pinned ~5.03 GiB pool
+#   Vision:    off (language-model-only)
+#   Max ctx:   163840 (167,052-token pool measured)
+#   Status:    🧪 Experimental
+#   Caveats:   custom K8/V4 registration; less capacity than K4/V2, higher KV fidelity
+#   Best for:  high-fidelity long context on one 24 GB RTX 3090
+# ---------------------------------------------------------------------------
+# Requires-min-vram-gb: 24
+# Requires-min-gpu-count: 1
+# Requires-sm: 8.6
+# Tensor-parallel: 1
+# ===========================================================================
+services:
+  hyperqwen-qwen38-single-kvarn-k8v4-dflash2:
+    image: ${HYPERQWEN_IMAGE:-vykosx/hyperqwen-vllm@sha256:11be34eaeac386b418beb98afe78221551f181c6a5726f9cf2dc02fdf92b438c}
+    container_name: "${ESTATE_CONTAINER:-hyperqwen-qwen38-single-kvarn-k8v4-dflash2}"
+    restart: ${CLUB3090_RESTART:-unless-stopped}
+    ipc: host
+    shm_size: "16gb"
+    stop_grace_period: 30s
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:${ESTATE_PORT:-${PORT:-8190}}:18020"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      HOME: /cache
+      PORT: "18020"
+      SPEC: ${SPEC:-dflash2}
+      PREFIX_CACHE: ${PREFIX_CACHE:-1}
+      CTX: ${CTX:-huge}
+      MAX_LEN: ${MAX_LEN:-163840}
+      KV_MEM: ${KV_MEM:-5395552666}
+      KVARN_DTYPE: ${KVARN_DTYPE:-kvarn_k8v4_g128}
+      KVARN_FP16_DEQUANT: ${KVARN_FP16_DEQUANT:-1}
+      VLLM_PREFIX_CACHE_RETENTION_INTERVAL: ${VLLM_PREFIX_CACHE_RETENTION_INTERVAL:-6912}
+      GPU_UTIL: ${GPU_UTIL:-0.93}
+      MAX_SEQS: ${MAX_SEQS:-1}
+      PREPARE: ${PREPARE:-0}
+      VERIFY: ${VERIFY:-1}
+      FAST_VARIANT: ${FAST_VARIANT:-1}
+      DFLASH2: ${DFLASH2:-1}
+      DFLASH_TOKENS: ${DFLASH_TOKENS:-7}
+      CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-0}
+      NVIDIA_VISIBLE_DEVICES: ${NVIDIA_VISIBLE_DEVICES:-0}
+    volumes:
+      - ${MODEL_DIR:-../../../../../../models-cache}/hyperqwen/Qwen3.8-27B-W4A16-AutoRound-fast:/app/models/Qwen3.8-27B-W4A16-AutoRound-fast:ro
+      - ${MODEL_DIR:-../../../../../../models-cache}/qwen3.8-27b-dflash2-w4a16:/app/models/Qwen3.8-27B-DFlash2-W4A16:ro
+      - ${CLUB3090_ENGINE_CACHE_DIR:-../../../cache}:/cache
+    command: ["single"]
+    healthcheck:
+      # Probe the container's routable interface, not loopback, so a bad bind
+      # address cannot look healthy from inside the container.
+      test: ["CMD-SHELL", "curl -sf \"http://$${HOSTNAME:-$$(hostname)}:18020/health\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 1800s
